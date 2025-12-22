@@ -19,11 +19,11 @@ npm install
 2) Ortam değişkenleri  
 `env.example` dosyasını `.env.local` olarak kopyalayın ve düzenleyin:
 ```
-MONGODB_URI=mongodb://localhost:27017/hmf2
+MONGODB_URI=mongodb://*******/hmf2
 MONGODB_DB=hmf2
-JWT_SECRET=guclu-bir-gizli-anahtar
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin1234
+JWT_SECRET=*****
+ADMIN_USERNAME=*****
+ADMIN_PASSWORD=*****
 ADMIN_NAME=Demo Admin
 ```
 
@@ -46,3 +46,5 @@ Uygulama: http://localhost:3000
 - Tailwind CSS v4
 - MongoDB & Mongoose
 - JWT + HttpOnly cookie oturum yönetimi
+
+
