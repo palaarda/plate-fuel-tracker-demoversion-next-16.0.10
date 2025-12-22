@@ -42,7 +42,7 @@ Uygulama: http://localhost:3000
 - Kilitli menüler: Görev Oluştur, Kullanıcı Yönetimi, Raporlama (demo mesajı gösterir).
 
 ## Teknoloji
-- Next.js 15 (app router) + TypeScript
+- Next.js 16 (app router) + TypeScript
 - Tailwind CSS v4
 - MongoDB & Mongoose
 - JWT + HttpOnly cookie oturum yönetimi
