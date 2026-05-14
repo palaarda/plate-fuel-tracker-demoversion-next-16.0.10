@@ -33,7 +33,7 @@ ADMIN_NAME=Demo Admin
 ```bash
 npm run dev
 ```
-Uygulama: http://localhost:3000
+
 
 ## Kullanım Notları
 - Login sonrası dashboard ve tüm API uçları middleware ile korunur.
