@@ -1,50 +1,192 @@
-# HMF Demo Panel
 
-Next.js (app router, TypeScript) + Tailwind v4 tabanlı, MongoDB ile çalışan filo yönetimi demosu.
+# Plate Fuel Tracker
 
-## Özellikler
-- JWT çerezli basit auth (login / logout), middleware ile koruma
-- Araç ekleme ve Excel (.xlsx/.xls) ile toplu içe aktarma
-- Araç listesi ve detay sayfası, detaydan yakıt kaydı ekleme
-- Yakıt kayıtlarını listeleme ve plaka ile arama
-- Kilitli menülerde “tam sürümde aktif” uyarısı
-- Dark / light tema toggle, responsive panel tasarımı
+A modern fleet and fuel management panel built with **Next.js 16**, **TypeScript**, and **MongoDB**.
 
-## Kurulum
-1) Bağımlılıklar  
+Plate Fuel Tracker is a web-based application for managing vehicle records, monitoring fuel activity, and handling fleet data through a clean and responsive dashboard.
+
+## Features
+
+### Fleet Management
+- Create and manage vehicle records.
+- Track license plates, make and model, odometer readings, and assigned drivers.
+- Search vehicles by license plate.
+- Import vehicle records from Excel spreadsheets (`.xlsx` and `.xls`).
+- Validate imported data before database operations.
+
+### Fuel Tracking
+- Record fuel transactions for vehicles.
+- Track fuel volume, transaction amounts, and dates.
+- Browse fuel activity from a centralized dashboard.
+- Export fuel records to Excel.
+- Export by today, last 7 days, last month, or a custom date range.
+
+### Authentication & Security
+- JWT-based session management.
+- HttpOnly authentication cookies.
+- Password hashing with bcrypt.
+- Role-based authorization (`super_admin`, `admin`, `user`).
+- Protected application routes and API endpoints.
+- Server-side input validation.
+- Centralized API error handling.
+- Environment variable validation.
+- File upload restrictions and Excel archive safety checks.
+
+### Interface
+- Responsive dashboard layout.
+- Dark and light themes.
+- Clean vehicle and fuel management screens.
+
+## Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| Next.js 16 | Application framework |
+| React 19 | User interface |
+| TypeScript | Type safety |
+| Tailwind CSS v4 | Styling |
+| MongoDB | Database |
+| Mongoose | Database modeling |
+| JWT | Authentication |
+| bcryptjs | Password hashing |
+| SheetJS (xlsx) | Excel import and export |
+| ESLint | Code quality |
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js
+- npm
+- MongoDB instance (local or MongoDB Atlas)
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/palaarda/plate-fuel-tracker-demoversion-next-16.0.10.git
+cd plate-fuel-tracker-demoversion-next-16.0.10
+```
+
+### 2. Install dependencies
+
 ```bash
 npm install
 ```
 
-2) Ortam değişkenleri  
-`env.example` dosyasını `.env.local` olarak kopyalayın ve düzenleyin:
-```
-MONGODB_URI=mongodb://*******/hmf2
+### 3. Configure environment variables
+
+Create a `.env.local` file in the project root:
+
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database>
 MONGODB_DB=hmf2
-JWT_SECRET=*****
-ADMIN_USERNAME=*****
-ADMIN_PASSWORD=*****
-ADMIN_NAME=Demo Admin
+JWT_SECRET=YOUR_RANDOM_SECRET_AT_LEAST_32_CHARACTERS
+
+ADMIN_USERNAME=your_admin_username
+ADMIN_PASSWORD=your_strong_admin_password
+ADMIN_NAME=Administrator
 ```
 
-> İlk girişte kullanıcı yoksa bu bilgilerle admin hesabı otomatik oluşturulur.
+Generate a secure JWT secret with Node.js:
 
-3) Geliştirme sunucusu  
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+```
+
+**Important:**
+- Never commit `.env.local` or expose database credentials.
+- Use a unique, randomly generated JWT secret.
+- Use a strong administrator password.
+- `MONGODB_DB` defaults to `hmf2` if not specified.
+
+### 4. Create the administrator account
+
+```bash
+node scripts/ensure-admin.js
+```
+
+This creates a `super_admin` account if the specified username does not already exist.
+
+To reset an existing administrator's password:
+
+```bash
+node scripts/ensure-admin.js --reset-password
+```
+
+After creating the administrator account, the `ADMIN_PASSWORD` environment variable can be removed if it is no longer needed.
+
+### 5. Start the development server
+
 ```bash
 npm run dev
 ```
 
+Open http://localhost:3000 in your browser.
 
-## Kullanım Notları
-- Login sonrası dashboard ve tüm API uçları middleware ile korunur.
-- Yakıt kayıtları yalnızca “Yakıt Takibi” sekmesinde listelenir.
-- Excel içe aktarma beklenen sütunlar: Plaka, Marka/Model, Kilometre, Sürücü.
-- Kilitli menüler: Görev Oluştur, Kullanıcı Yönetimi, Raporlama (demo mesajı gösterir).
+## Available Scripts
 
-## Teknoloji
-- Next.js 16 (app router) + TypeScript
-- Tailwind CSS v4
-- MongoDB & Mongoose
-- JWT + HttpOnly cookie oturum yönetimi
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the development server |
+| `npm run build` | Create a production build |
+| `npm run start` | Start the production server |
+| `npm run lint` | Run ESLint |
 
+TypeScript can also be checked with:
 
+```bash
+npx tsc --noEmit
+```
+
+## Project Structure
+
+```text
+plate-fuel-tracker/
+├── scripts/
+│   ├── ensure-admin.js
+│   ├── init-db.js
+│   └── seed-demo.js
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── auth/
+│   │   └── (dashboard)/
+│   ├── components/
+│   ├── lib/
+│   ├── models/
+│   └── proxy.ts
+├── .gitignore
+├── package.json
+├── next.config.ts
+└── tsconfig.json
+```
+
+## Current Project Scope
+
+Plate Fuel Tracker is currently a demo-stage project.
+
+The active modules are:
+- Vehicle management
+- Fuel tracking
+- Excel import and export
+- Authentication and authorization
+
+The following dashboard sections are reserved for future development:
+- Task management
+- User management interface
+- Advanced reporting
+
+## Security Notes
+
+This project includes several application-level security measures, but it has not been independently audited or penetration-tested.
+
+Before deploying:
+- Configure production environment variables securely.
+- Use HTTPS.
+- Protect database access with appropriate network restrictions and credentials.
+- Keep dependencies updated.
+- Never publish secrets, tokens, or private configuration files.
+
+## License
+
+No license has been specified yet. All rights reserved unless otherwise stated.
