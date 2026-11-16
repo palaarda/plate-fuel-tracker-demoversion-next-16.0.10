@@ -1,34 +1,37 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { connectDb } from "./db";
-import { UserModel, type UserDocument } from "../models/User";
-
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable eksik.");
-}
+import { getJwtSecret, isProduction } from "./env";
+import { isUserRole, type UserRole } from "./roles";
+import type { UserDocument } from "../models/User";
 
 export type SessionPayload = {
   sub: string;
   username: string;
   name: string;
-  role?: string;
+  role: UserRole;
 };
+
+export type VerifiedSession = SessionPayload & { iat: number };
+
+const MAX_IAT_CLOCK_SKEW_SECONDS = 60;
+const JWT_ALGORITHM = "HS256";
+const JWT_ISSUER = "hmf-panel";
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+const BCRYPT_ROUNDS = 12;
 
 export const authCookieName = "auth_token";
 
 export const authCookieOptions = {
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  secure: isProduction,
   path: "/",
-  maxAge: 60 * 60 * 24 * 7, // 7 gün
+  maxAge: SESSION_TTL_SECONDS,
 };
 
 export const hashPassword = async (password: string) =>
-  bcrypt.hash(password, 10);
+  bcrypt.hash(password, BCRYPT_ROUNDS);
 
 export const verifyPassword = (password: string, passwordHash: string) =>
   bcrypt.compare(password, passwordHash);
@@ -38,43 +41,52 @@ export const createSessionToken = (user: UserDocument) => {
     sub: user._id.toString(),
     username: user.username,
     name: user.name,
-    role: user.role,
+    role: isUserRole(user.role) ? user.role : "user",
   };
 
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
-};
-
-export const verifySessionToken = (token: string): SessionPayload | null => {
-  try {
-    return jwt.verify(token, JWT_SECRET) as SessionPayload;
-  } catch (err) {
-    console.error("JWT doğrulama hatası:", err);
-    return null;
-  }
-};
-
-export const getSessionFromCookies = async (): Promise<SessionPayload | null> => {
-  const jar = await cookies();
-  const token = typeof jar.get === "function" ? jar.get(authCookieName)?.value : null;
-  if (!token) return null;
-  return verifySessionToken(token);
-};
-
-export const ensureDefaultAdmin = async () => {
-  await connectDb();
-  const count = await UserModel.countDocuments();
-  if (count > 0) return;
-
-  const username = process.env.ADMIN_USERNAME || "admin";
-  const password = process.env.ADMIN_PASSWORD || "admin1234";
-  const name = process.env.ADMIN_NAME || "Demo Admin";
-
-  const passwordHash = await hashPassword(password);
-  await UserModel.create({
-    username,
-    name,
-    passwordHash,
-    role: "super_admin",
+  return jwt.sign(payload, getJwtSecret(), {
+    algorithm: JWT_ALGORITHM,
+    issuer: JWT_ISSUER,
+    expiresIn: SESSION_TTL_SECONDS,
   });
 };
 
+const isValidIat = (iat: unknown): iat is number =>
+  typeof iat === "number" &&
+  Number.isInteger(iat) &&
+  iat > 0 &&
+  iat <= Math.floor(Date.now() / 1000) + MAX_IAT_CLOCK_SKEW_SECONDS;
+
+const isVerifiedSession = (value: unknown): value is VerifiedSession => {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.sub === "string" &&
+    typeof v.username === "string" &&
+    typeof v.name === "string" &&
+    isUserRole(v.role) &&
+    isValidIat(v.iat)
+  );
+};
+
+export const verifySessionToken = (token: string): VerifiedSession | null => {
+  try {
+    const decoded = jwt.verify(token, getJwtSecret(), {
+      algorithms: [JWT_ALGORITHM],
+      issuer: JWT_ISSUER,
+    });
+    return isVerifiedSession(decoded) ? decoded : null;
+  } catch (err) {
+    if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
+      return null;
+    }
+    throw err;
+  }
+};
+
+export const getSessionFromCookies = async (): Promise<VerifiedSession | null> => {
+  const jar = await cookies();
+  const token = jar.get(authCookieName)?.value;
+  if (!token) return null;
+  return verifySessionToken(token);
+};

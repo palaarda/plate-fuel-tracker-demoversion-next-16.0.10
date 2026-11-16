@@ -1,103 +1,72 @@
 import { NextResponse } from "next/server";
-import { connectDb } from "@/lib/db";
-import { getSessionFromCookies } from "@/lib/auth";
+import {
+  findVehicleByKey,
+  getRouteKey,
+  jsonError,
+  readJsonBody,
+  requireAuth,
+  withErrorHandling,
+  type IdRouteContext,
+} from "@/lib/api";
+import { validateFuelInput } from "@/lib/validation";
 import { FuelEntryModel } from "@/models/FuelEntry";
-import { VehicleModel } from "@/models/Vehicle";
-import mongoose from "mongoose";
 
-type Params =
-  | { params: { id: string } }
-  | { params: Promise<{ id: string }> };
+export const POST = withErrorHandling(
+  "fuel:create",
+  async (request: Request, ctx: IdRouteContext) => {
+    const auth = await requireAuth();
+    if (!auth.ok) return auth.response;
 
-export async function POST(request: Request, ctx: Params) {
-  const session = await getSessionFromCookies();
-  if (!session) {
-    return NextResponse.json({ message: "Yetkisiz" }, { status: 401 });
+    const parsed = validateFuelInput(await readJsonBody(request));
+    if (!parsed.ok) {
+      return jsonError(parsed.message, 400);
+    }
+
+    const key = await getRouteKey(ctx);
+    if (!key) {
+      return jsonError("Araç kimliği eksik veya geçersiz.", 400);
+    }
+
+    const vehicle = await findVehicleByKey(key);
+    if (!vehicle) {
+      return jsonError("Araç bulunamadı.", 404);
+    }
+
+    const entry = await FuelEntryModel.create({
+      vehicleId: vehicle._id,
+      plate: vehicle.plate,
+      liters: parsed.value.liters,
+      amount: parsed.value.amount,
+    });
+
+    return NextResponse.json({ entry }, { status: 201 });
   }
+);
 
-  const { liters, amount } = await request.json();
-  if (liters === undefined || amount === undefined) {
+export const DELETE = withErrorHandling(
+  "fuel:delete",
+  async (_request: Request, ctx: IdRouteContext) => {
+    const auth = await requireAuth({ admin: true });
+    if (!auth.ok) return auth.response;
+
+    const key = await getRouteKey(ctx);
+    if (!key) {
+      return jsonError("Araç kimliği eksik veya geçersiz.", 400);
+    }
+
+    const vehicle = await findVehicleByKey(key);
+    if (!vehicle) {
+      return jsonError("Araç bulunamadı.", 404);
+    }
+
+    const result = await FuelEntryModel.deleteMany({ vehicleId: vehicle._id });
+
     return NextResponse.json(
-      { message: "Litre ve tutar zorunludur." },
-      { status: 400 }
+      {
+        message: "Yakıt kayıtları silindi.",
+        deleted: result.deletedCount ?? 0,
+      },
+      { status: 200 }
     );
   }
-
-  const resolvedParams =
-    typeof (ctx as any).params?.then === "function"
-      ? await (ctx as any).params
-      : (ctx as any).params;
-
-  const rawId = resolvedParams?.id;
-  if (!rawId) {
-    return NextResponse.json({ message: "Araç kimliği eksik." }, { status: 400 });
-  }
-
-  await connectDb();
-
-  let vehicle = null;
-
-  // ObjectId olarak dene
-  if (mongoose.Types.ObjectId.isValid(rawId)) {
-    vehicle = await VehicleModel.findById(rawId);
-  }
-
-  // ObjectId değilse ya da bulunamadıysa plaka ile ara
-  if (!vehicle) {
-    vehicle = await VehicleModel.findOne({ plate: rawId.toUpperCase() });
-  }
-
-  if (!vehicle) {
-    return NextResponse.json({ message: "Araç bulunamadı." }, { status: 404 });
-  }
-
-  const entry = await FuelEntryModel.create({
-    vehicleId: vehicle._id,
-    plate: vehicle.plate,
-    liters: Number(liters),
-    amount: Number(amount),
-  });
-
-  return NextResponse.json({ entry }, { status: 201 });
-}
-
-export async function DELETE(_request: Request, ctx: Params) {
-  const session = await getSessionFromCookies();
-  if (!session) {
-    return NextResponse.json({ message: "Yetkisiz" }, { status: 401 });
-  }
-
-  const resolvedParams =
-    typeof (ctx as any).params?.then === "function"
-      ? await (ctx as any).params
-      : (ctx as any).params;
-
-  const rawId = resolvedParams?.id;
-  if (!rawId) {
-    return NextResponse.json({ message: "Araç kimliği eksik." }, { status: 400 });
-  }
-
-  await connectDb();
-
-  let vehicle = null;
-  if (mongoose.Types.ObjectId.isValid(rawId)) {
-    vehicle = await VehicleModel.findById(rawId);
-  }
-  if (!vehicle) {
-    vehicle = await VehicleModel.findOne({ plate: rawId.toUpperCase() });
-  }
-  if (!vehicle) {
-    return NextResponse.json({ message: "Araç bulunamadı." }, { status: 404 });
-  }
-
-  const result = await FuelEntryModel.deleteMany({ vehicleId: vehicle._id });
-
-  return NextResponse.json(
-    {
-      message: "Yakıt kayıtları silindi.",
-      deleted: result.deletedCount ?? 0,
-    },
-    { status: 200 }
-  );
-}
-
+);

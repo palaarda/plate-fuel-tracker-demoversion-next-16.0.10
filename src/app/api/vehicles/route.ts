@@ -1,63 +1,52 @@
 import { NextResponse } from "next/server";
-import { connectDb } from "@/lib/db";
-import { getSessionFromCookies } from "@/lib/auth";
+import {
+  isDuplicateKeyError,
+  jsonError,
+  readJsonBody,
+  requireAuth,
+  withErrorHandling,
+} from "@/lib/api";
+import { isPlainObject, validateVehicleInput } from "@/lib/validation";
 import { VehicleModel } from "@/models/Vehicle";
 
-export async function GET() {
-  const session = await getSessionFromCookies();
-  if (!session) {
-    return NextResponse.json({ message: "Yetkisiz" }, { status: 401 });
-  }
+export const GET = withErrorHandling("vehicles:list", async () => {
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
 
-  const conn = await connectDb();
-  const vehicles = await VehicleModel.find().sort({ createdAt: -1 }).lean();
-  console.log(
-    "[vehicles:list]",
-    conn?.name,
-    "count=",
-    vehicles.length
-  );
+  const vehicles = await VehicleModel.find()
+    .select("plate makeModel odometer driverName createdAt")
+    .sort({ createdAt: -1 })
+    .lean();
+
   return NextResponse.json({ vehicles });
-}
+});
 
-export async function POST(request: Request) {
-  const session = await getSessionFromCookies();
-  if (!session) {
-    return NextResponse.json({ message: "Yetkisiz" }, { status: 401 });
+export const POST = withErrorHandling("vehicles:create", async (request: Request) => {
+  const auth = await requireAuth({ admin: true });
+  if (!auth.ok) return auth.response;
+
+  const body = await readJsonBody(request);
+  if (!isPlainObject(body)) {
+    return jsonError("Geçersiz istek gövdesi.", 400);
   }
 
-  const { plate, makeModel, odometer, driverName } = await request.json();
-
-  if (!plate || !makeModel || !odometer || !driverName) {
-    return NextResponse.json(
-      { message: "Plaka, marka/model, kilometre ve sürücü zorunludur." },
-      { status: 400 }
-    );
+  const { plate, makeModel, odometer, driverName } = body;
+  if (!plate || !makeModel || odometer === undefined || odometer === "" || !driverName) {
+    return jsonError("Plaka, marka/model, kilometre ve sürücü zorunludur.", 400);
   }
 
-  await connectDb();
+  const parsed = validateVehicleInput({ plate, makeModel, odometer, driverName });
+  if (!parsed.ok) {
+    return jsonError(parsed.message, 400);
+  }
+
   try {
-    const vehicle = await VehicleModel.create({
-      plate: String(plate).trim().toUpperCase(),
-      makeModel: makeModel.trim(),
-      odometer: Number(odometer),
-      driverName: driverName.trim(),
-    });
-
+    const vehicle = await VehicleModel.create(parsed.value);
     return NextResponse.json({ vehicle }, { status: 201 });
-  } catch (error: any) {
-    if (error?.code === 11000) {
-      return NextResponse.json(
-        { message: "Bu plaka zaten kayıtlı." },
-        { status: 409 }
-      );
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      return jsonError("Bu plaka zaten kayıtlı.", 409);
     }
-
-    console.error("Araç kaydı hatası:", error);
-    return NextResponse.json(
-      { message: "Araç kaydedilirken hata oluştu." },
-      { status: 500 }
-    );
+    throw error;
   }
-}
-
+});

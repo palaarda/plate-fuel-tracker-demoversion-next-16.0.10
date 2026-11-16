@@ -46,7 +46,7 @@ body {
   @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800/60;
 }
 
-/* Dev ortamında sol alttaki Next.js overlay tuşunu gizle */
+
 #nextjs-portal,
 button[aria-label="Open Next.js overlay"],
 #__next-build-watcher {
