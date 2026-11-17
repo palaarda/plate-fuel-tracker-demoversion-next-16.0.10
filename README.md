@@ -232,5 +232,3 @@ Before deploying:
 No license has been specified yet. All rights reserved unless otherwise stated.
 
 ---
-
-Developed by [CREOFT](https://www.creoft.com) · Demo v0.1.0
