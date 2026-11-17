@@ -1,9 +1,38 @@
-
 # Plate Fuel Tracker
 
 A modern fleet and fuel management panel built with **Next.js 16**, **TypeScript**, and **MongoDB**.
 
 Plate Fuel Tracker is a web-based application for managing vehicle records, monitoring fuel activity, and handling fleet data through a clean and responsive dashboard.
+
+---
+
+## Screenshots
+
+### Dashboard overview
+
+Active modules (Vehicles, Fuel Tracking) and locked features reserved for the full version.
+
+![Dashboard overview](screenshots/dashboard-home.png)
+
+### Vehicles
+
+Add vehicles manually, import from Excel (`.xlsx` / `.xls`), and search the list by license plate.
+
+![Vehicles page](screenshots/cars.png)
+
+### Vehicle detail
+
+Driver, odometer, and creation info, plus recent fuel entries and a form to add new fuel records.
+
+![Vehicle detail page](screenshots/car-details.png)
+
+### Fuel tracking
+
+Central fuel activity table with plate search and Excel export.
+
+![Fuel tracking page](screenshots/fuel-tracking.png)
+
+---
 
 ## Features
 
@@ -31,6 +60,8 @@ Plate Fuel Tracker is a web-based application for managing vehicle records, moni
 - Centralized API error handling.
 - Environment variable validation.
 - File upload restrictions and Excel archive safety checks.
+- Progressive login backoff and bcrypt concurrency limits.
+- Session invalidation after password reset (`passwordChangedAt` + JWT `iat`).
 
 ### Interface
 - Responsive dashboard layout.
@@ -75,13 +106,17 @@ npm install
 
 ### 3. Configure environment variables
 
-Create a `.env.local` file in the project root:
+Copy `.env.example` to `.env.local` and fill in the values:
+
+```bash
+cp .env.example .env.local
+```
 
 ```env
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database>
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/
 MONGODB_DB=hmf2
 JWT_SECRET=YOUR_RANDOM_SECRET_AT_LEAST_32_CHARACTERS
-
+TRUSTED_PROXY_HOPS=0
 ADMIN_USERNAME=your_admin_username
 ADMIN_PASSWORD=your_strong_admin_password
 ADMIN_NAME=Administrator
@@ -90,19 +125,20 @@ ADMIN_NAME=Administrator
 Generate a secure JWT secret with Node.js:
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 ```
 
 **Important:**
 - Never commit `.env.local` or expose database credentials.
 - Use a unique, randomly generated JWT secret.
-- Use a strong administrator password.
+- Use a strong administrator password (min. 12 characters, at least 3 character classes).
 - `MONGODB_DB` defaults to `hmf2` if not specified.
+- The app never creates a default admin account automatically.
 
 ### 4. Create the administrator account
 
 ```bash
-node scripts/ensure-admin.js
+npm run admin:create
 ```
 
 This creates a `super_admin` account if the specified username does not already exist.
@@ -121,7 +157,9 @@ After creating the administrator account, the `ADMIN_PASSWORD` environment varia
 npm run dev
 ```
 
-Open http://localhost:3000 in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+If you use MongoDB Atlas, make sure your current IP is allowed under **Network Access**.
 
 ## Available Scripts
 
@@ -131,6 +169,7 @@ Open http://localhost:3000 in your browser.
 | `npm run build` | Create a production build |
 | `npm run start` | Start the production server |
 | `npm run lint` | Run ESLint |
+| `npm run admin:create` | Create the administrator account |
 
 TypeScript can also be checked with:
 
@@ -142,6 +181,7 @@ npx tsc --noEmit
 
 ```text
 plate-fuel-tracker/
+├── screenshots/
 ├── scripts/
 │   ├── ensure-admin.js
 │   ├── init-db.js
@@ -190,3 +230,7 @@ Before deploying:
 ## License
 
 No license has been specified yet. All rights reserved unless otherwise stated.
+
+---
+
+Developed by [CREOFT](https://www.creoft.com) · Demo v0.1.0

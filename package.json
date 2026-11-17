@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "admin:create": "node scripts/ensure-admin.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

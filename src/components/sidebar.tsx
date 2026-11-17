@@ -74,7 +74,7 @@ export const Sidebar = ({ userName }: Props) => {
         </div>
 
         <a href="https://www.creoft.com" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-300 underline underline-offset-4 transition hover:text-white" style={{ fontFamily: '"Bebas Neue", sans-serif', letterSpacing: "0.08em" }}>
-          Developed by CREOFT (V 0.1.0)
+          Developed by CREOFT (V 1.0.0)
         </a>
       </div>
     </aside>);
